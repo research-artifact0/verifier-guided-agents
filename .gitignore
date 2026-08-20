@@ -7,8 +7,12 @@ venv/
 data/
 *.zip
 
-# Unified run outputs (keep placeholder + package only)
-/runs/
+# Unified run outputs
+/runs/*
+!/runs/.gitkeep
+!/runs/__init__.py
+!/runs/paths.py
+
 /data/
 /docs/
 /dpo/
