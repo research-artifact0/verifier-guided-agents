@@ -77,15 +77,20 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=argparse.SUPPRESS,  # deprecated alias for --lora-dir (legacy scripts)
     )
-    parser.add_argument("--variants", default=None, help="Comma-separated; default: discovered")
+    parser.add_argument("--variants", default=config.EVAL_VARIANTS, help="Comma-separated")
     parser.add_argument("--episodes", type=int, default=config.EPISODES_PER_ENV)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=config.EVAL_SEED)
     parser.add_argument("--paper", action="store_true", help="3B paper model")
     parser.add_argument("--model-id", default=None)
     parser.add_argument("--lora-r", type=int, default=None)
     parser.add_argument("--lora-alpha", type=int, default=None)
     parser.add_argument("--lora-target", default=None)
-    parser.add_argument("--max-tokens", type=int, default=192)
+    parser.add_argument("--max-tokens", type=int, default=config.EVAL_MAX_TOKENS)
+    parser.add_argument(
+        "--games",
+        default=None if config.EVAL_GAMES.lower() == "all" else config.EVAL_GAMES,
+        help="Comma-separated games; default: all",
+    )
     parser.add_argument("--merge-alpha", type=float, default=config.MERGE_ALPHA)
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--mode", choices=["lora", "heuristic"], default="lora")
@@ -170,6 +175,8 @@ def main(argv: list[str] | None = None) -> int:
         suite_argv.extend(["--lora-alpha", str(args.lora_alpha)])
     if args.lora_target:
         suite_argv.extend(["--lora-target", args.lora_target])
+    if args.games:
+        suite_argv.extend(["--games", args.games])
     if args.run_id:
         suite_argv.extend(["--run-id", args.run_id])
     elif session_id:

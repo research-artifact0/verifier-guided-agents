@@ -1,113 +1,154 @@
-# SARL — Strategic Agent Learning
+# SARL: Strategic Agent Learning
 
-This repository trains six Qwen2.5-3B DPO/LoRA variants and evaluates the paper's Tables 1–7. Run every command below from the repository root.
+### Training and Evaluating Strategic Language Agents with DPO
 
-## Requirements
+[📄 Paper](docs/paper_v01.pdf)
 
-- Linux GPU node with an NVIDIA GPU and CUDA 12.6
-- Conda environment named `sal`
-- Python 3.10 or newer
-- Hugging Face access to `Qwen/Qwen2.5-3B-Instruct`; a token is also required for gated frontier models
+---
 
-On the UMass cluster, create the environment once:
+## 📖 Overview
+
+SARL trains language-model agents to act strategically across cooperative and competitive games. The repository provides the complete pipeline for preparing preference data, training Qwen2.5-3B LoRA adapters with Direct Preference Optimization (DPO), and reproducing Tables 1–7.
+
+The pipeline includes three stages:
+
+1. **Preference Data Construction:** Merge, deduplicate, and deterministically sample game trajectories into six training datasets.
+2. **Strategic Agent Training:** Train six DPO/LoRA variants and construct a merged adapter.
+3. **Game Evaluation:** Evaluate in-distribution and held-out strategic games using the paper protocol.
+
+### 🎮 Featured Games
+
+- **Social dilemmas:** Prisoner's Dilemma and Stag Hunt
+- **Coordination and competition:** Battle of the Sexes and Matching Pennies
+- **Sequential interaction:** Negotiation and Tic-Tac-Toe
+- **Held-out games:** Auction, Divide-the-Dollar, Beauty Contest, and one-stage IPD
+
+---
+
+## 🚀 Method
+
+SARL uses preference pairs of the form `prompt / chosen / rejected` to optimize a 4-bit Qwen2.5-3B base model with DPO. The paper protocol trains the following variants:
+
+| Variant | Training pairs | Description |
+|---|---:|---|
+| `filter_on` | 388 | Filtered preference data |
+| `filter_off` | 407 | Unfiltered preference data |
+| `core` | 503 | Core A+β subset |
+| `aux` | 613 | Auxiliary A+β subset |
+| `all` | 1,338 | Full A+β set |
+| `rw` | 1,749 | Reward-weighted extension |
+| `merge` | — | Equal-weight merge of `aux` and `all` |
+
+---
+
+## 🛠️ Installation
+
+The project requires Python 3.10 or newer, an NVIDIA GPU, and CUDA 12.6. On the UMass cluster, create the environment once:
 
 ```bash
 module load conda/latest cuda/12.6
 conda create -n sal python=3.11 -y
 conda activate sal
+
 pip install torch==2.6.0 torchvision==0.21.0 \
   --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
+
 cp .env.example .env
 # Set HF_TOKEN in .env.
 ```
 
-For each new shell or GPU allocation:
+Initialize each new shell or GPU allocation:
 
 ```bash
 source scripts/activate.sh
 bash scripts/check_gpu_train.sh
 ```
 
-`scripts/activate.sh` loads `.env`, CUDA 12.6, the `sal` Conda environment, and the CUDA library paths. The GPU check must finish successfully before training or LoRA evaluation.
+The Hugging Face account must have access to `Qwen/Qwen2.5-3B-Instruct`. Gated frontier-model evaluation also requires the corresponding model license.
 
-## Reproduce training
+---
 
-### 1. Prepare the six datasets
+## ⚡ Training
 
-The source files must exist under `data/*_1000/`. They are merged, deduplicated, deterministically ordered, and sampled to the paper's Table 5 sizes:
+Use the following commands to reproduce the paper training pipeline.
+
+### 1. Prepare Preference Data
+
+Source trajectories must be available under `data/*_1000/`.
 
 ```bash
 python scripts/prepare_paper_data.py --from-1000
 ```
 
-Expected files and pair counts:
+The command writes the six datasets and `latest_manifest.json` to `data/paper/`. It fails if any source pool is too small instead of silently undersampling.
 
-| Variant | File | Pairs |
-|---|---|---:|
-| `filter_on` | `data/paper/filter_on.jsonl` | 388 |
-| `filter_off` | `data/paper/filter_off.jsonl` | 407 |
-| `core` | `data/paper/a_beta_core.jsonl` | 503 |
-| `aux` | `data/paper/a_beta_aux.jsonl` | 613 |
-| `all` | `data/paper/a_beta_all.jsonl` | 1,338 |
-| `rw` | `data/paper/a_beta_rw.jsonl` | 1,749 |
+### 2. Train Strategic Agents
 
-The command also writes `data/paper/latest_manifest.json`. Preparation fails rather than silently undersampling when a source pool is too small.
-
-### 2. Train
-
-Choose a session ID once so training and evaluation use the same directory:
+Set one session ID and use it for both training and evaluation:
 
 ```bash
 export SAL_RUN_ID="$(date -u +%Y%m%d_%H%M%S)"
+
+# Train all six variants and merge AUX + ALL.
 ./scripts/run_paper_train.sh --session "$SAL_RUN_ID"
+
+# Train one variant.
+./scripts/run_paper_train.sh \
+  --session "$SAL_RUN_ID" \
+  --variant all
 ```
 
-This trains, in order, `filter_on`, `filter_off`, `core`, `aux`, `all`, and `rw`, then creates the `merge` adapter from `aux` and `all`. Each trainable variant uses:
+The paper configuration is:
 
-- base model: `Qwen/Qwen2.5-3B-Instruct`
-- DPO epochs: 10
-- batch size: 1; gradient accumulation: 8
-- learning rate: `5e-5`; cosine schedule; warm-up ratio: `0.05`
-- DPO beta: `0.1`; maximum sequence length: 12,288
-- LoRA rank: 16; alpha: 32; dropout: 0.05; targets: `all-linear`
-- 4-bit base-model loading and gradient checkpointing
-- checkpoint interval: 20 optimizer steps; retained checkpoints: 100
-- TensorBoard logging enabled
+- Base model: `Qwen/Qwen2.5-3B-Instruct`
+- Epochs: 10
+- Per-device batch size: 1
+- Gradient accumulation: 8
+- Learning rate: `5e-5`
+- Scheduler and warm-up: cosine, `0.05`
+- DPO beta: `0.1`
+- Maximum sequence length: 12,288
+- LoRA: rank 16, alpha 32, dropout 0.05, `all-linear` targets
+- Checkpoints: every 20 optimizer steps, retaining up to 100
+- Quantization: 4-bit
 
-Train one variant:
+### Resume Training
 
 ```bash
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID" --variant all
+# Resume the latest unfinished checkpoint for this variant.
+./scripts/run_paper_train.sh \
+  --session "$SAL_RUN_ID" \
+  --variant all \
+  --resume
+
+# Resume an explicit checkpoint.
+./scripts/run_paper_train.sh \
+  --session "$SAL_RUN_ID" \
+  --variant all \
+  --resume-from-checkpoint \
+  "runs/$SAL_RUN_ID/lora/all/adapter/checkpoint-100"
 ```
 
-Resume the latest unfinished checkpoint for that output, or name a checkpoint explicitly:
+### Monitoring
+
+Track training with TensorBoard:
 
 ```bash
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID" --variant all --resume
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID" --variant all \
-  --resume-from-checkpoint "runs/$SAL_RUN_ID/lora/all/adapter/checkpoint-100"
-```
-
-Useful alternatives:
-
-```bash
-# Do not build the merged adapter.
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID" --skip-merge
-
-# Build only the merged adapter after aux and all exist.
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID" --merge-only
-
-# Inspect training logs.
 tensorboard --logdir "runs/$SAL_RUN_ID/lora" --port 6006
 ```
 
-## Reproduce evaluation
+---
 
-The full paper evaluation uses 12 episodes per environment, seed 42, and a 192-token generation limit. It evaluates the base model plus the six trained variants and merged adapter:
+## 🧪 Evaluation
+
+### 1. Full Paper Evaluation
+
+Evaluate the base model, six trained variants, and merged adapter over Tables 1–7:
 
 ```bash
 export SAL_RUN_ID=<training-session-id>
+
 ./scripts/eval_gpu.sh \
   --paper \
   --run-id "$SAL_RUN_ID" \
@@ -119,66 +160,89 @@ export SAL_RUN_ID=<training-session-id>
   --max-tokens 192
 ```
 
-Evaluation creates symlinks in `staging/`, evaluates Tables 1–7, and writes JSON tables, raw metrics/logs, `result.md`, and `latex.md` under `runs/$SAL_RUN_ID/eval/`. Add `--copy` if the staging directory must contain copies instead of symlinks.
+The paper evaluation uses 12 episodes per environment, random seed 42, and a 192-token generation limit. Adapter symlinks are assembled under `staging/`; pass `--copy` when physical copies are required.
 
-Resume an interrupted evaluation with the same session and arguments:
+### 2. Resume Evaluation
+
+Use the identical session ID and evaluation arguments:
 
 ```bash
 ./scripts/eval_gpu.sh \
-  --paper --resume --run-id "$SAL_RUN_ID" \
+  --paper \
+  --resume \
+  --run-id "$SAL_RUN_ID" \
   --lora-dir "runs/$SAL_RUN_ID/lora" \
   --variants base,filter_on,filter_off,core,aux,all,rw,merge \
-  --episodes 12 --seed 42 --max-tokens 192
+  --episodes 12 \
+  --seed 42 \
+  --max-tokens 192
 ```
 
-List adapters detected for a session without loading a model:
+### 3. Single-Table Evaluation
 
 ```bash
-./scripts/eval_gpu.sh --paper --list --run-id "$SAL_RUN_ID" \
-  --lora-dir "runs/$SAL_RUN_ID/lora"
-```
-
-Run one table/variant directly:
-
-```bash
-./scripts/eval_gpu.sh --table 1 --mode lora --variant all \
+./scripts/eval_gpu.sh \
+  --table 1 \
+  --mode lora \
+  --variant all \
   --model-id Qwen/Qwen2.5-3B-Instruct \
   --checkpoint-dir "runs/$SAL_RUN_ID/lora" \
-  --episodes 12 --seed 42 --max-tokens 192 \
-  --lora-r 16 --lora-alpha 32 --lora-target all-linear
+  --episodes 12 \
+  --seed 42 \
+  --max-tokens 192 \
+  --lora-r 16 \
+  --lora-alpha 32 \
+  --lora-target all-linear
 ```
 
-A CPU-only structural smoke test is available; its heuristic scores are not paper results:
+### 4. Smoke Test
+
+The heuristic mode checks the evaluation pipeline without loading a GPU model. Its scores are not paper results.
 
 ```bash
 python -m eval.run_paper_tables \
-  --mode heuristic --episodes 1 --variants base --run-id smoke
+  --mode heuristic \
+  --episodes 1 \
+  --variants base \
+  --run-id smoke
 ```
 
-For the separate 1,000-episode robustness evaluation, see `eval/EXTENDED_EVAL.md`.
+For the separate 1,000-episode robustness protocol, see [Extended Evaluation](eval/EXTENDED_EVAL.md).
 
-## One-command protocol
+---
 
-The protocol wrapper prepares missing data, trains, merges, and evaluates in one session:
+## 🔄 End-to-End Pipeline
+
+Run data preparation, training, merging, and evaluation in one session:
 
 ```bash
-./scripts/run_paper_protocol.sh --session "$(date -u +%Y%m%d_%H%M%S)"
+./scripts/run_paper_protocol.sh \
+  --session "$(date -u +%Y%m%d_%H%M%S)"
 ```
 
-Stage-only modes:
+Individual stages can also be run independently:
 
 ```bash
+# Data preparation only
 ./scripts/run_paper_protocol.sh --data-only
+
+# Training only
 ./scripts/run_paper_protocol.sh --train-only --session <session-id>
+
+# Evaluation only
 ./scripts/run_paper_protocol.sh --eval-only --session <session-id>
 ```
 
-## Output layout
+---
+
+## 📊 Outputs
+
+All artifacts from one experiment share a session directory:
 
 ```text
 runs/<session-id>/
 ├── lora/
-│   ├── filter_on/        published adapter; checkpoints are under adapter/
+│   ├── filter_on/
 │   ├── filter_off/
 │   ├── core/
 │   ├── aux/
@@ -186,7 +250,7 @@ runs/<session-id>/
 │   ├── rw/
 │   └── merge/
 └── eval/
-    ├── staging/          adapter symlinks or copies
+    ├── staging/
     ├── tables/
     ├── metrics/
     ├── logs/
@@ -194,9 +258,13 @@ runs/<session-id>/
     └── latex.md
 ```
 
-`runs/latest.json` points to the most recently completed training session. Large datasets, model outputs, `.env`, and Python caches are intentionally ignored by Git.
+Each trainable variant stores its resumable checkpoints under `adapter/checkpoint-*`. `runs/latest.json` points to the most recently completed training session.
 
-## Troubleshooting
+---
+
+## 🔧 Troubleshooting
+
+Verify the CUDA environment and GPU visibility:
 
 ```bash
 module load cuda/12.6
@@ -205,5 +273,5 @@ setup_cuda_ld
 bash scripts/check_gpu_train.sh
 ```
 
-If model loading reports `AutoProcessor`, Torch, or TorchVision errors, reinstall the matched pair shown in Requirements. If a gated model returns HTTP 401/403, verify `HF_TOKEN` in `.env` and that the account has accepted the model license.
-# verifier-guided-agents
+- For `AutoProcessor`, Torch, or TorchVision import errors, reinstall the matched Torch/TorchVision versions listed above.
+- For Hugging Face HTTP 401/403 errors, verify `HF_TOKEN` in `.env` and confirm model-license access.

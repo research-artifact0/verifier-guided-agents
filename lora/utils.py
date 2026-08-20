@@ -37,10 +37,11 @@ def _check_bitsandbytes_cuda() -> None:
 
 
 def build_bnb_config() -> BitsAndBytesConfig:
+    compute_dtype = getattr(torch, config.BNB_4BIT_COMPUTE_DTYPE)
     return BitsAndBytesConfig(
         load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=compute_dtype,
+        bnb_4bit_quant_type=config.BNB_4BIT_QUANT_TYPE,
     )
 
 
@@ -55,7 +56,7 @@ def build_lora_config(
         lora_alpha=alpha or config.LORA_ALPHA,
         target_modules=tm,
         lora_dropout=config.LORA_DROPOUT,
-        task_type="CAUSAL_LM",
+        task_type="CAULM",
     )
 
 

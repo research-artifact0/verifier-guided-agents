@@ -69,7 +69,7 @@ def infer_train_epochs(checkpoint_dir: Path | str | None) -> int | None:
 
 
 def _train_epochs(hp: dict) -> int | str:
-    env = os.environ.get("SAL_TRAIN_EPOCHS")
+    env = os.environ.get("TRAIN_EPOCHS")
     if env:
         return int(env)
     if hp.get("train_epochs") is not None:
@@ -83,12 +83,12 @@ def _train_epochs(hp: dict) -> int | str:
 def build_run_title(hp: dict, *, kind: str = "local") -> str:
     """One-line tag distinguishing this run from the paper.
 
-    Override entirely: ``SAL_EVAL_TITLE=my label``
-    Extra suffix: ``SAL_RUN_LABEL=pd-only``
-    Train epochs: ``SAL_TRAIN_EPOCHS=1`` (if not in run_info)
+    Override entirely: ``EVAL_TITLE=my label``
+    Extra suffix: ``RUN_LABEL=pd-only``
+    Train epochs: ``TRAIN_EPOCHS=1`` (if not in run_info)
     """
     if kind == "local":
-        override = os.environ.get("SAL_EVAL_TITLE")
+        override = os.environ.get("EVAL_TITLE")
         if override:
             return override.strip()
 
@@ -107,7 +107,7 @@ def build_run_title(hp: dict, *, kind: str = "local") -> str:
         alpha = hp.get("lora_alpha") if hp.get("lora_alpha") is not None else LORA_ALPHA
         prefix = "Local"
 
-    extra = os.environ.get("SAL_RUN_LABEL", "").strip()
+    extra = os.environ.get("RUN_LABEL", "").strip()
     title = f"[{prefix}] Qwen2.5-{model} · train_ep={train_ep} · eval_ep={eval_ep} · LoRA r={r} α={alpha}"
     if extra and kind == "local":
         title += f" · {extra}"

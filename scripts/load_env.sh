@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Load sal/.env (HF token etc.) for GPU scripts. Safe to source multiple times.
-_load_sal_env() {
+_load_env() {
   local root="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
   local env_file="${root}/.env"
 
@@ -28,7 +28,7 @@ _load_sal_env() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  _load_sal_env "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  _load_env "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   echo "HF_HOME: ${HF_HOME:-unset}"
   echo "HF_TOKEN set: $([[ -n ${HF_TOKEN:-} ]] && echo yes || echo no)"
 fi

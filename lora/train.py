@@ -93,7 +93,7 @@ def _find_resume_for_publish(publish_dir: Path) -> tuple[Path, Path, Path] | Non
     if not runs_dir.is_dir():
         return None
 
-    session_filter = os.environ.get("SAL_RUN_ID")
+    session_filter = os.environ.get("RUN_ID")
     if session_filter:
         sessions = [runs_dir / session_filter]
     else:
@@ -214,7 +214,7 @@ def main() -> None:
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=None,
+        default=config.MAX_TRAIN_STEPS,
         help="Stop after N optimizer steps (overrides --epochs when set)",
     )
     parser.add_argument("--lr", type=float, default=config.LEARNING_RATE)
@@ -316,7 +316,7 @@ def main() -> None:
     lora_cfg = build_lora_config(r=lora_r, alpha=lora_alpha, target_modules=target_modules)
 
     if args.smoke_only:
-        model, tokenizer = load_base_model(model_id=model_id, use_4bit=True)
+        model, tokenizer = load_base_model(model_id=model_id, use_4bit=config.USE_4BIT)
         model = attach_lora(model, lora_cfg)
         loss = smoke_test_backward(model, tokenizer)
         print(
@@ -340,13 +340,13 @@ def main() -> None:
         model, tokenizer = load_lora_adapter(
             resume_ckpt,
             model_id=model_id,
-            use_4bit=True,
+            use_4bit=config.USE_4BIT,
         )
         print(f"Resuming from {resume_ckpt}", flush=True)
     else:
-        model, tokenizer = load_base_model(model_id=model_id, use_4bit=True)
+        model, tokenizer = load_base_model(model_id=model_id, use_4bit=config.USE_4BIT)
         model = attach_lora(model, lora_cfg)
-    if hasattr(model, "gradient_checkpointing_enable"):
+    if config.GRADIENT_CHECKPOINTING and hasattr(model, "gradient_checkpointing_enable"):
         model.gradient_checkpointing_enable()
     if getattr(model, "config", None) is not None:
         model.config.use_cache = False
@@ -397,7 +397,7 @@ def main() -> None:
     tb_dir = run_dir / "tensorboard"
     train_kw: dict = {
         "output_dir": str(adapter_dir),
-        "per_device_train_batch_size": 1,
+        "per_device_train_batch_size": config.PER_DEVICE_BATCH,
         "gradient_accumulation_steps": args.grad_accum,
         "num_train_epochs": args.epochs,
     }
@@ -406,15 +406,15 @@ def main() -> None:
     dpo_args = DPOConfig(
         **train_kw,
         learning_rate=args.lr,
-        lr_scheduler_type="cosine",
+        lr_scheduler_type=config.LR_SCHEDULER,
         warmup_ratio=config.WARMUP_RATIO,
-        logging_steps=10,
+        logging_steps=config.LOGGING_STEPS,
         save_steps=config.SAVE_STEPS,
         save_total_limit=save_total_limit,
-        gradient_checkpointing=True,
+        gradient_checkpointing=config.GRADIENT_CHECKPOINTING,
         # fp16 GradScaler breaks on torch 2.11+win (bf16 unscale NotImplementedError)
-        fp16=False,
-        bf16=False,
+        fp16=config.TRAIN_FP16,
+        bf16=config.TRAIN_BF16,
         report_to="tensorboard" if use_tensorboard else "none",
         logging_dir=str(tb_dir) if use_tensorboard else None,
         beta=args.beta,

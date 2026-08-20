@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 DATA_DIR="data/paper"
-SESSION_ID="${SAL_RUN_ID:-}"
+SESSION_ID="${RUN_ID:-}"
 SINGLE_VARIANT=""
 MERGE_ONLY=0
 SKIP_MERGE=0
@@ -46,11 +46,11 @@ log() { echo "[$(date '+%H:%M:%S')] $*"; }
 setup_env() {
   # shellcheck source=scripts/activate.sh
   source "${ROOT}/scripts/activate.sh"
-  export SAL_TRAIN_EPOCHS=10
+  export TRAIN_EPOCHS="${TRAIN_EPOCHS:-10}"
   if [[ -z "$SESSION_ID" ]]; then
     SESSION_ID="$(date -u +%Y%m%d_%H%M%S)"
   fi
-  export SAL_RUN_ID="$SESSION_ID"
+  export RUN_ID="$SESSION_ID"
   LORA_ROOT="runs/${SESSION_ID}/lora"
   mkdir -p "$LORA_ROOT"
   log "Session: runs/${SESSION_ID}/lora/"
@@ -76,7 +76,7 @@ train_variant() {
     --tensorboard \
     --pairs "${pairs}" \
     --out "${variant}" \
-    --epochs 10 \
+    --epochs "${TRAIN_EPOCHS}" \
     "${extra[@]}"
 }
 

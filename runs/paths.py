@@ -15,12 +15,12 @@ def utc_stamp() -> str:
 
 
 def active_session_id() -> str | None:
-    return os.environ.get("SAL_RUN_ID")
+    return os.environ.get("RUN_ID")
 
 
 def ensure_session(session_id: str | None = None) -> str:
     sid = session_id or active_session_id() or utc_stamp()
-    os.environ["SAL_RUN_ID"] = sid
+    os.environ["RUN_ID"] = sid
     (RUNS_DIR / sid / "lora").mkdir(parents=True, exist_ok=True)
     return sid
 
@@ -61,7 +61,7 @@ def eval_run_dir(session_id: str | None = None, *, create: bool = True) -> Path:
 
 def new_eval_dir(run_id: str | None = None) -> Path:
     if run_id:
-        os.environ.setdefault("SAL_RUN_ID", run_id)
+        os.environ.setdefault("RUN_ID", run_id)
     return eval_run_dir(run_id, create=True)
 
 

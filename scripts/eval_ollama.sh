@@ -10,7 +10,7 @@ OLLAMA_ROOT="${OLLAMA_ROOT:-/scratch/workspace/eunbiyoon_umass_edu-paper/ollama-
 cd "$ROOT"
 # shellcheck source=scripts/load_env.sh
 source "$ROOT/scripts/load_env.sh"
-_load_sal_env "$ROOT"
+_load_env "$ROOT"
 
 module load conda/latest 2>/dev/null || true
 # shellcheck disable=SC1091

@@ -526,7 +526,7 @@ def build_latex_md(
         f"- Episodes / env: {hp.get('episodes_per_env', '?')}",
         f"- Variants: {', '.join(ok_variants)}",
         "",
-        "Optional env overrides: `SAL_EVAL_TITLE`, `SAL_TRAIN_EPOCHS`, `SAL_RUN_LABEL`",
+        "Optional env overrides: `EVAL_TITLE`, `TRAIN_EPOCHS`, `RUN_LABEL`",
         "",
         "Preamble (add once to your `.tex` file):",
         "",

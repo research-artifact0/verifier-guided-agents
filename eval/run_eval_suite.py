@@ -32,6 +32,9 @@ from config import (
     ALL_GAMES,
     DPO_BETA,
     EPISODES_PER_ENV,
+    EVAL_GAMES,
+    EVAL_MAX_TOKENS,
+    EVAL_SEED,
     EVAL_DEFAULT_VARIANTS,
     EVAL_DIR,
     EVAL_RUNS_DIR,
@@ -519,13 +522,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Comma-separated (default: base,all)",
     )
     parser.add_argument("--episodes", type=int, default=EPISODES_PER_ENV)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=EVAL_SEED)
     parser.add_argument("--paper", action="store_true", help="3B paper model + lora_3b/")
     parser.add_argument("--model-id", default=None)
     parser.add_argument("--lora-r", type=int, default=None)
     parser.add_argument("--lora-alpha", type=int, default=None)
     parser.add_argument("--lora-target", default=None)
-    parser.add_argument("--max-tokens", type=int, default=192)
+    parser.add_argument("--max-tokens", type=int, default=EVAL_MAX_TOKENS)
     parser.add_argument(
         "--run-id",
         default=None,
@@ -538,7 +541,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--games",
-        default=None,
+        default=None if EVAL_GAMES.lower() == "all" else EVAL_GAMES,
         help="Comma-separated games to run (default: all)",
     )
     args = parser.parse_args(argv)

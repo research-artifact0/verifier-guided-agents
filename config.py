@@ -48,6 +48,29 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
+
+def _env_str(name: str, default: str) -> str:
+    import os
+
+    return os.environ.get(name, default)
+
+
+def _env_int(name: str, default: int) -> int:
+    return int(_env_str(name, str(default)))
+
+
+def _env_float(name: str, default: float) -> float:
+    return float(_env_str(name, str(default)))
+
+
+def _env_optional_int(name: str, default: int | None = None) -> int | None:
+    value = _env_str(name, "" if default is None else str(default)).strip()
+    return int(value) if value else None
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    return _env_str(name, str(default)).lower() in {"1", "true", "yes", "on"}
+
 DPO_DIR = PROJECT_ROOT / "dpo"
 DPO_DATA_DIR = DPO_DIR / "data"
 LORA_DIR = PROJECT_ROOT / "lora"
@@ -55,11 +78,13 @@ RUNS_DIR = PROJECT_ROOT / "runs"
 # Legacy aliases — prefer RUNS_DIR + runs.paths helpers
 LORA_RUNS_DIR = RUNS_DIR
 EVAL_RUNS_DIR = RUNS_DIR
-LORA_3B_DIR = RUNS_DIR  # resolved per-session via SAL_RUN_ID in train/eval scripts
+LORA_3B_DIR = RUNS_DIR  # resolved per-session via RUN_ID in train/eval scripts
 RESULTS_DIR = PROJECT_ROOT / "results"
 EVAL_DIR = PROJECT_ROOT / "eval"
 # Paper eval: 12 envs × EPISODES_PER_ENV episodes; ~3.5–4 h per variant on RTX 3060 12GB
-EVAL_DEFAULT_VARIANTS = ("base", "all")
+EVAL_DEFAULT_VARIANTS = tuple(
+    v.strip() for v in _env_str("EVAL_VARIANTS", "base,core").split(",") if v.strip()
+)
 EVAL_EST_SECONDS_PER_VARIANT = 3.75 * 3600  # wall-clock hint for ep=12, 0.5B 4-bit
 
 # DPO generate config (Ollama): PD classic / tight / high-temptation
@@ -80,7 +105,7 @@ OLLAMA_FRONTIER_MODEL = "llama3.1:8b"  # Table 1 Llama 3.1–8B via local Ollama
 # Local smoke test (lora.py): Qwen2.5-0.5B-Instruct 4-bit, r=8 alpha=16, ~0.46 GB VRAM
 
 MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-PAPER_MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
+PAPER_MODEL_ID = _env_str("MODEL_ID", "Qwen/Qwen2.5-3B-Instruct")
 
 # Table 1 frontier references (paper: pretrained base, not -Instruct)
 FRONTIER_MODEL_IDS = {
@@ -91,17 +116,28 @@ FRONTIER_MODEL_IDS = {
 
 LORA_R = 8
 LORA_ALPHA = 16
-LORA_DROPOUT = 0.05
+LORA_DROPOUT = _env_float("LORA_DROPOUT", 0.05)
 LORA_TARGET_MODULES = ["q_proj", "v_proj"]  # matches working lora.py
 
-PAPER_LORA_R = 16
-PAPER_LORA_ALPHA = 32
-PAPER_LORA_TARGET_MODULES = "all-linear"  # paper: target_modules=auto
+PAPER_LORA_R = _env_int("LORA_R", 16)
+PAPER_LORA_ALPHA = _env_int("LORA_ALPHA", 32)
+PAPER_LORA_TARGET_MODULES = _env_str("LORA_TARGET", "all-linear")
 
-DPO_BETA = 0.1
-LEARNING_RATE = 5e-5
-NUM_EPOCHS = 10
-EPISODES_PER_ENV = 12
+DPO_BETA = _env_float("DPO_BETA", 0.1)
+LEARNING_RATE = _env_float("LEARNING_RATE", 5e-5)
+NUM_EPOCHS = _env_int("TRAIN_EPOCHS", 10)
+MAX_TRAIN_STEPS = _env_optional_int("TRAIN_MAX_STEPS")
+EPISODES_PER_ENV = _env_int("EVAL_EPISODES", 12)
+EVAL_SEED = _env_int("EVAL_SEED", 42)
+EVAL_MAX_TOKENS = _env_int("EVAL_MAX_TOKENS", 192)
+EVAL_VARIANTS = _env_str("EVAL_VARIANTS", "base,core")
+EVAL_GAMES = _env_str("EVAL_GAMES", "all")
+USE_4BIT = _env_bool("USE_4BIT", True)
+BNB_4BIT_QUANT_TYPE = _env_str("BNB_4BIT_QUANT_TYPE", "nf4")
+BNB_4BIT_COMPUTE_DTYPE = _env_str("BNB_4BIT_COMPUTE_DTYPE", "float16")
+GRADIENT_CHECKPOINTING = _env_bool("GRADIENT_CHECKPOINTING", True)
+TRAIN_FP16 = _env_bool("FP16", False)
+TRAIN_BF16 = _env_bool("BF16", False)
 GENERATE_N_EPISODES = 1000  # paper-scale DPO rollout per env
 GENERATE_N_EPISODES_DEMO = 16
 
@@ -232,14 +268,16 @@ TRAINING_VARIANTS = {
 MERGE_ALPHA = 0.5
 
 # Appendix E full training hyperparameters
-MAX_SEQ_LENGTH = 12288  # paper
+MAX_SEQ_LENGTH = _env_int("MAX_LENGTH", 12288)
 LOCAL_MAX_SEQ_LENGTH = 8192  # RTX 3060 12GB: fits ~7.7k-token DPO pairs
-PER_DEVICE_BATCH = 1
-GRADIENT_ACCUMULATION = 8
+PER_DEVICE_BATCH = _env_int("TRAIN_BATCH_SIZE", 1)
+GRADIENT_ACCUMULATION = _env_int("GRAD_ACCUM", 8)
 LOCAL_GRADIENT_ACCUMULATION = 4  # lower VRAM peak during DPO (chosen+rejected)
-WARMUP_RATIO = 0.05
-SAVE_STEPS = 20
-PAPER_SAVE_TOTAL_LIMIT = 100  # retain up to 100 checkpoints for paper runs
+WARMUP_RATIO = _env_float("WARMUP_RATIO", 0.05)
+LR_SCHEDULER = _env_str("LR_SCHEDULER", "cosine")
+LOGGING_STEPS = _env_int("LOGGING_STEPS", 10)
+SAVE_STEPS = _env_int("SAVE_STEPS", 20)
+PAPER_SAVE_TOTAL_LIMIT = _env_int("SAVE_TOTAL_LIMIT", 100)
 
 TABLE1_VARIANTS = [
     "base", "filter_on", "filter_off", "core", "aux", "all", "rw", "merge",

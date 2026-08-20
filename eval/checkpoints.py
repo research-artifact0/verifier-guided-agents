@@ -39,7 +39,7 @@ def discover_run_adapters(runs_dir: Path | None = None) -> dict[str, Path]:
     if not runs_dir.is_dir():
         return found
 
-    session_filter = __import__("os").environ.get("SAL_RUN_ID")
+    session_filter = __import__("os").environ.get("RUN_ID")
     sessions = (
         [runs_dir / session_filter]
         if session_filter

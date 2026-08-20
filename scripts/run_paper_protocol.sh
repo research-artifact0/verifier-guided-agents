@@ -20,7 +20,7 @@ TRAIN_ONLY=0
 EVAL_ONLY=0
 SINGLE_VARIANT=""
 EPISODES=12
-SESSION_ID="${SAL_RUN_ID:-}"
+SESSION_ID="${RUN_ID:-}"
 VARIANTS="base,filter_on,filter_off,core,aux,all,rw,merge"
 
 while [[ $# -gt 0 ]]; do
@@ -53,8 +53,8 @@ setup_env() {
   log "Activating conda env (sal)..."
   # shellcheck source=scripts/activate.sh
   source "${ROOT}/scripts/activate.sh"
-  export SAL_TRAIN_EPOCHS=10
-  export SAL_RUN_LABEL="paper-protocol"
+  export TRAIN_EPOCHS="${TRAIN_EPOCHS:-10}"
+  export RUN_LABEL="paper-protocol"
   if [[ -z "$SESSION_ID" ]]; then
     if [[ "$EVAL_ONLY" -eq 1 && -f runs/latest.json ]]; then
       SESSION_ID="$(python -c "import json; print(json.load(open('runs/latest.json'))['run_id'])")"
@@ -62,7 +62,7 @@ setup_env() {
       SESSION_ID="$(date -u +%Y%m%d_%H%M%S)"
     fi
   fi
-  export SAL_RUN_ID="$SESSION_ID"
+  export RUN_ID="$SESSION_ID"
   LORA_ROOT="runs/${SESSION_ID}/lora"
   EVAL_ROOT="runs/${SESSION_ID}/eval"
   mkdir -p "$LORA_ROOT" "$EVAL_ROOT"
@@ -83,7 +83,7 @@ train_variant() {
     --tensorboard \
     --pairs "${pairs}" \
     --out "${variant}" \
-    --epochs 10
+    --epochs "${TRAIN_EPOCHS}"
 }
 
 train_all() {
