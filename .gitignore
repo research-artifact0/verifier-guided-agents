@@ -8,10 +8,10 @@ data/
 *.zip
 
 # Unified run outputs (keep placeholder + package only)
-runs/*
-data/*
-docs/*
-dpo/*
+/runs/
+/data/
+/docs/
+/dpo/
 
 !runs/.gitkeep
 !runs/__init__.py
