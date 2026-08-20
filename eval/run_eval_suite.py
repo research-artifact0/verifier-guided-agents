@@ -502,7 +502,6 @@ def _resolve_eval_args(ns: argparse.Namespace) -> Namespace:
         merge_alpha=MERGE_ALPHA,
         lr=LEARNING_RATE,
         epochs=NUM_EPOCHS,
-        smoke=False,
         no_4bit=not USE_4BIT,
         max_tokens=ns.max_tokens,
         logger=ns.logger,

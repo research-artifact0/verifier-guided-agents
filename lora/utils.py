@@ -1,4 +1,4 @@
-"""LoRA utilities aligned with lora.py smoke test + paper merge (Eq. 4)."""
+"""LoRA model-loading and paper adapter-merge utilities."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def _check_bitsandbytes_cuda() -> None:
     if lib is None or not getattr(lib, "compiled_with_cuda", False):
         raise RuntimeError(
             "bitsandbytes loaded CPU library (4-bit quantize unavailable). "
-            "On NVHPC clusters run: module load cuda/12.6 && source scripts/setup_cuda_ld.sh "
+            "Load CUDA 12.6 and its math libraries before training "
             f"(BNB_CUDA_VERSION={os.environ.get('BNB_CUDA_VERSION', '')!r})"
         )
     probe = torch.randn(8, 8, device="cuda", dtype=torch.float16)
@@ -32,7 +32,7 @@ def _check_bitsandbytes_cuda() -> None:
     except Exception as exc:
         raise RuntimeError(
             "bitsandbytes 4-bit probe failed on GPU. "
-            "Use: ./scripts/train_gpu.sh ... after module load cuda/12.6"
+            "Run lora/train.sh from a CUDA GPU allocation."
         ) from exc
 
 
@@ -132,14 +132,3 @@ def merge_lora_adapters(
 
     save_file(merged, str(out_path / aux_files[0].name))
     return out_path
-
-
-def smoke_test_backward(model, tokenizer) -> float:
-    """Same check as lora.py."""
-    text = "Explain reinforcement learning in simple terms."
-    inputs = tokenizer(text, return_tensors="pt").to(model.device)
-    labels = inputs["input_ids"]
-    model.train()
-    out = model(**inputs, labels=labels)
-    out.loss.backward()
-    return float(out.loss.item())

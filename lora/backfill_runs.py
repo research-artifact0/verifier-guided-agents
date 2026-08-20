@@ -136,8 +136,8 @@ def backfill_variant(
         if command
         else [
             sys.executable,
-            "run_pipeline.py",
-            "train",
+            "-m",
+            "lora.train",
             "--pairs",
             str(pairs_path.relative_to(config.PROJECT_ROOT)),
             "--out",

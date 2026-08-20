@@ -18,6 +18,8 @@ from config import (
     BNB_4BIT_QUANT_TYPE,
     PER_DEVICE_BATCH,
     PROJECT_ROOT,
+    STUDENT_MODEL,
+    TEACHER_MODEL,
     TRAIN_BF16,
     TRAIN_FP16,
     USE_4BIT,
@@ -53,6 +55,8 @@ def build_config_snapshot(
         else str(pairs_path),
         "pairs_count": pairs_count,
         "model_id": model_id,
+        "student_model": model_id or STUDENT_MODEL,
+        "teacher_model": TEACHER_MODEL,
         "paper": paper,
         "epochs": epochs,
         "learning_rate": lr,
@@ -229,7 +233,8 @@ DPO LoRA 학습 1회 실행 기록입니다. 재현·비교용으로 **명령어
 
 | 항목 | 값 |
 |------|-----|
-| model | `{snapshot.get("model_id")}` |
+| student model (blind / LoRA target) | `{snapshot.get("student_model")}` |
+| teacher model (oracle) | `{snapshot.get("teacher_model")}` |
 | pairs | `{snapshot.get("pairs")}` ({snapshot.get("pairs_count")} rows) |
 | epochs | `{snapshot.get("epochs")}` |
 | LoRA | r=`{snapshot.get("lora_r")}`, alpha=`{snapshot.get("lora_alpha")}`, target=`{snapshot.get("lora_target")}` |
@@ -254,6 +259,6 @@ DPO LoRA 학습 1회 실행 기록입니다. 재현·비교용으로 **명령어
 publish 경로 adapter로 Table eval:
 
 ```bash
-python run_pipeline.py evaluate --table 1 --variant {snapshot.get("variant")} --episodes 12
+./eval/eval.sh
 ```
 """

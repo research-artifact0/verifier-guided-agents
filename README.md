@@ -1,4 +1,4 @@
-# SARL: Strategic Agent Learning
+# Beyond Frontier Action Distillation: Verifier-Guided Training for Small Agentic Models
 ## 📖 Overview
 
 SARL trains language-model agents to act strategically across cooperative and competitive games. The repository provides the complete pipeline for preparing preference data, training Qwen2.5-3B LoRA adapters with Direct Preference Optimization (DPO), and reproducing Tables 1–7.
@@ -21,6 +21,8 @@ The pipeline includes three stages:
 ## 🚀 Method
 
 SARL uses preference pairs of the form `prompt / chosen / rejected` to optimize a 4-bit Qwen2.5-3B base model with DPO. The paper protocol trains the following variants:
+
+The teacher is the oracle policy that produces preferred responses. The student is both the blind rollout policy and the model updated by LoRA/DPO; no separate blind-model setting is used.
 
 | Variant | Training pairs | Description |
 |---|---:|---|
@@ -51,180 +53,78 @@ cp .env.example .env
 # Set HF_TOKEN in .env.
 ```
 
-Initialize each new shell or GPU allocation:
+The Hugging Face account must have access to `Qwen/Qwen2.5-3B-Instruct`. The train and eval entrypoints load CUDA, Conda, and `.env` automatically.
 
-```bash
-source scripts/activate.sh
-bash scripts/check_gpu_train.sh
+---
+
+## ⚙️ Configuration
+
+All hyperparameters are managed in `.env`; training and evaluation commands need no arguments. The main settings are:
+
+```dotenv
+STUDENT_MODEL=Qwen/Qwen2.5-3B-Instruct
+TEACHER_MODEL=Qwen/Qwen2.5-7B-Instruct
+
+TRAIN_MAX_STEPS=100
+TRAIN_EPOCHS=10
+LEARNING_RATE=5e-5
+DPO_BETA=0.1
+LORA_R=16
+LORA_ALPHA=32
+LORA_DROPOUT=0.05
+LORA_TARGET=all-linear
+MAX_LENGTH=12288
+TRAIN_BATCH_SIZE=1
+GRAD_ACCUM=8
+WARMUP_RATIO=0.05
+LR_SCHEDULER=cosine
+LOGGING_STEPS=10
+SAVE_STEPS=20
+SAVE_TOTAL_LIMIT=100
+
+EVAL_EPISODES=12
+EVAL_SEED=42
+EVAL_MAX_TOKENS=192
+EVAL_VARIANTS=base,core
+EVAL_GAMES=all
+MERGE_ALPHA=0.5
 ```
 
-The Hugging Face account must have access to `Qwen/Qwen2.5-3B-Instruct`. Gated frontier-model evaluation also requires the corresponding model license.
+`TRAIN_MAX_STEPS` takes precedence over `TRAIN_EPOCHS`. Leave it empty to train by epoch. See [.env.example](.env.example) for quantization, precision, CUDA, and cache settings.
 
 ---
 
 ## ⚡ Training
 
-Use the following commands to reproduce the paper training pipeline.
-
-### 1. Prepare Preference Data
-
-Source trajectories must be available under `data/*_1000/`.
+Prepared preference datasets must exist under `data/paper/`.
 
 ```bash
-python scripts/prepare_paper_data.py --from-1000
+./lora/train.sh
 ```
 
-The command writes the six datasets and `latest_manifest.json` to `data/paper/`. It fails if any source pool is too small instead of silently undersampling.
-
-### 2. Train Strategic Agents
-
-Set one session ID and use it for both training and evaluation:
-
-```bash
-export SAL_RUN_ID="$(date -u +%Y%m%d_%H%M%S)"
-
-# Train all six variants and merge AUX + ALL.
-./scripts/run_paper_train.sh --session "$SAL_RUN_ID"
-
-# Train one variant.
-./scripts/run_paper_train.sh \
-  --session "$SAL_RUN_ID" \
-  --variant all
-```
-
-The paper configuration is:
-
-- Base model: `Qwen/Qwen2.5-3B-Instruct`
-- Epochs: 10
-- Per-device batch size: 1
-- Gradient accumulation: 8
-- Learning rate: `5e-5`
-- Scheduler and warm-up: cosine, `0.05`
-- DPO beta: `0.1`
-- Maximum sequence length: 12,288
-- LoRA: rank 16, alpha 32, dropout 0.05, `all-linear` targets
-- Checkpoints: every 20 optimizer steps, retaining up to 100
-- Quantization: 4-bit
-
-### Resume Training
-
-```bash
-# Resume the latest unfinished checkpoint for this variant.
-./scripts/run_paper_train.sh \
-  --session "$SAL_RUN_ID" \
-  --variant all \
-  --resume
-
-# Resume an explicit checkpoint.
-./scripts/run_paper_train.sh \
-  --session "$SAL_RUN_ID" \
-  --variant all \
-  --resume-from-checkpoint \
-  "runs/$SAL_RUN_ID/lora/all/adapter/checkpoint-100"
-```
+This trains all six variants, creates the merged adapter, and stores everything in a new `runs/<session-id>/lora/` directory. Every setting is read from `.env`.
 
 ### Monitoring
 
 Track training with TensorBoard:
 
 ```bash
-tensorboard --logdir "runs/$SAL_RUN_ID/lora" --port 6006
+tensorboard --logdir runs --port 6006
 ```
 
 ---
 
 ## 🧪 Evaluation
 
-### 1. Full Paper Evaluation
-
-Evaluate the base model, six trained variants, and merged adapter over Tables 1–7:
+After training finishes, run:
 
 ```bash
-export SAL_RUN_ID=<training-session-id>
-
-./scripts/eval_gpu.sh \
-  --paper \
-  --run-id "$SAL_RUN_ID" \
-  --lora-dir "runs/$SAL_RUN_ID/lora" \
-  --staging-dir "runs/$SAL_RUN_ID/eval/staging" \
-  --variants base,filter_on,filter_off,core,aux,all,rw,merge \
-  --episodes 12 \
-  --seed 42 \
-  --max-tokens 192
+./eval/eval.sh
 ```
 
-The paper evaluation uses 12 episodes per environment, random seed 42, and a 192-token generation limit. Adapter symlinks are assembled under `staging/`; pass `--copy` when physical copies are required.
-
-### 2. Resume Evaluation
-
-Use the identical session ID and evaluation arguments:
-
-```bash
-./scripts/eval_gpu.sh \
-  --paper \
-  --resume \
-  --run-id "$SAL_RUN_ID" \
-  --lora-dir "runs/$SAL_RUN_ID/lora" \
-  --variants base,filter_on,filter_off,core,aux,all,rw,merge \
-  --episodes 12 \
-  --seed 42 \
-  --max-tokens 192
-```
-
-### 3. Single-Table Evaluation
-
-```bash
-./scripts/eval_gpu.sh \
-  --table 1 \
-  --mode lora \
-  --variant all \
-  --model-id Qwen/Qwen2.5-3B-Instruct \
-  --checkpoint-dir "runs/$SAL_RUN_ID/lora" \
-  --episodes 12 \
-  --seed 42 \
-  --max-tokens 192 \
-  --lora-r 16 \
-  --lora-alpha 32 \
-  --lora-target all-linear
-```
-
-### 4. Smoke Test
-
-The heuristic mode checks the evaluation pipeline without loading a GPU model. Its scores are not paper results.
-
-```bash
-python -m eval.run_paper_tables \
-  --mode heuristic \
-  --episodes 1 \
-  --variants base \
-  --run-id smoke
-```
+This automatically evaluates the latest training session in paper mode. Model, variants, games, episode count, seed, generation length, LoRA settings, and merge weight are read from `.env`. Results are written under `runs/<session-id>/eval/`.
 
 For the separate 1,000-episode robustness protocol, see [Extended Evaluation](eval/EXTENDED_EVAL.md).
-
----
-
-## 🔄 End-to-End Pipeline
-
-Run data preparation, training, merging, and evaluation in one session:
-
-```bash
-./scripts/run_paper_protocol.sh \
-  --session "$(date -u +%Y%m%d_%H%M%S)"
-```
-
-Individual stages can also be run independently:
-
-```bash
-# Data preparation only
-./scripts/run_paper_protocol.sh --data-only
-
-# Training only
-./scripts/run_paper_protocol.sh --train-only --session <session-id>
-
-# Evaluation only
-./scripts/run_paper_protocol.sh --eval-only --session <session-id>
-```
 
 ---
 
@@ -256,15 +156,6 @@ Each trainable variant stores its resumable checkpoints under `adapter/checkpoin
 ---
 
 ## 🔧 Troubleshooting
-
-Verify the CUDA environment and GPU visibility:
-
-```bash
-module load cuda/12.6
-source scripts/setup_cuda_ld.sh
-setup_cuda_ld
-bash scripts/check_gpu_train.sh
-```
 
 - For `AutoProcessor`, Torch, or TorchVision import errors, reinstall the matched Torch/TorchVision versions listed above.
 - For Hugging Face HTTP 401/403 errors, verify `HF_TOKEN` in `.env` and confirm model-license access.

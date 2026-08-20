@@ -92,20 +92,19 @@ DPO_CONFIG_PD = DPO_DIR / "configs" / "pd.yaml"
 DEFAULT_N_EPISODES = 1
 PAPER_N_EPISODES = 1000
 # Backward-compatible aliases
-DPO_CONFIG_SMOKE = DPO_CONFIG_PD
 DPO_CONFIG_PAPER = DPO_CONFIG_PD
-OLLAMA_MODEL = "qwen2.5:3b"
-OLLAMA_MODEL_BLIND = "qwen2.5:3b"
-OLLAMA_MODEL_ORACLE = "qwen2.5:7b"
 OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 OLLAMA_MAX_TOKENS_PD = 256
 OLLAMA_FRONTIER_MODEL = "llama3.1:8b"  # Table 1 Llama 3.1–8B via local Ollama
 
 # Paper: Qwen2.5-3B-Instruct, LoRA r=16 alpha=32 dropout=0.05, DPO beta=0.1
-# Local smoke test (lora.py): Qwen2.5-0.5B-Instruct 4-bit, r=8 alpha=16, ~0.46 GB VRAM
+STUDENT_MODEL = _env_str("STUDENT_MODEL", "Qwen/Qwen2.5-3B-Instruct")
+TEACHER_MODEL = _env_str("TEACHER_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
-MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-PAPER_MODEL_ID = _env_str("MODEL_ID", "Qwen/Qwen2.5-3B-Instruct")
+# Compatibility aliases for evaluation/training modules. Both resolve to the
+# student because the blind rollout policy and the LoRA target are identical.
+MODEL_ID = STUDENT_MODEL
+PAPER_MODEL_ID = STUDENT_MODEL
 
 # Table 1 frontier references (paper: pretrained base, not -Instruct)
 FRONTIER_MODEL_IDS = {
@@ -243,7 +242,7 @@ PAPER_TABLE3 = {
     "ID Strategic": {"base": 13.26, "core": 15.12, "aux": 15.25, "all": 16.35, "rw": 14.62, "merge": 15.54, "haiku": 21.13},
     "HO Stationary": {"base": 1.41, "core": 1.29, "aux": 1.48, "all": 1.48, "rw": 1.37, "merge": 1.49, "haiku": 1.10},
     "HO Stochastic": {"base": -3.33, "core": -0.07, "aux": 0.20, "all": -1.32, "rw": 2.23, "merge": 1.91, "haiku": 2.67},
-    # Fill from paper eval: run ./scripts/run_paper_protocol.sh --eval-only after lora_3b training.
+    # Filled from the paper evaluation after LoRA training.
     "HO Strategic": {"base": None, "core": None, "aux": None, "all": None, "rw": None, "merge": None, "haiku": None},
 }
 
@@ -265,7 +264,7 @@ TRAINING_VARIANTS = {
 }
 
 # Eq. 4 LoRA merge weight: W_merge = MERGE_ALPHA * W_AUX + (1 - MERGE_ALPHA) * W_ALL
-MERGE_ALPHA = 0.5
+MERGE_ALPHA = _env_float("MERGE_ALPHA", 0.5)
 
 # Appendix E full training hyperparameters
 MAX_SEQ_LENGTH = _env_int("MAX_LENGTH", 12288)

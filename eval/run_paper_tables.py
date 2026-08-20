@@ -2,7 +2,7 @@
 """One-shot entry: runs/<session>/lora adapters -> paper Tables 1-7 under runs/<session>/eval/.
 
 Examples:
-  # Smoke (heuristic, no GPU)
+  # Lightweight heuristic evaluation (no GPU)
   python eval/run_paper_tables.py --mode heuristic --episodes 1
 
   # Full paper protocol on trained variants (GPU)
@@ -185,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
         suite_argv.append("--resume")
 
     if args.mode == "heuristic":
-        # Heuristic smoke path: run table1 only per variant (fast, no GPU)
+        # Heuristic path: run table 1 only per variant (fast, no GPU)
         from argparse import Namespace
 
         from eval.run_table import eval_variant, save_json
@@ -214,7 +214,6 @@ def main(argv: list[str] | None = None) -> int:
             merge_alpha=args.merge_alpha,
             lr=config.LEARNING_RATE,
             epochs=config.NUM_EPOCHS,
-            smoke=False,
             no_4bit=not config.USE_4BIT,
             max_tokens=args.max_tokens,
             logger=None,

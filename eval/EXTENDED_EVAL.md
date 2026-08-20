@@ -14,7 +14,7 @@ PYTHONHASHSEED=0 python -m eval.extended_eval --list \
 When the requested checkpoints and the base model are locally cached, run:
 
 ```bash
-./scripts/eval_gpu.sh --extended \
+PYTHONHASHSEED=0 python -m eval.extended_eval \
   --episodes 1000 --seed 42 \
   --lora-dir runs/<session_id>/lora \
   --variants base,filter_on,filter_off,core,aux,all,rw,merge \

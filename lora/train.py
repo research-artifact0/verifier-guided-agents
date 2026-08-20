@@ -1,11 +1,4 @@
-"""Train LoRA with DPO on preference pairs (paper §2.6, Appendix E).
-
-  # Local 0.5B smoke
-  python run_pipeline.py train --pairs dpo/data/a_beta_all.jsonl --out lora/all
-
-  # Paper 3B (Ollama generate via smoke/paper suite; HF LoRA train)
-  python run_pipeline.py train --paper --pairs dpo/data/a_beta_all.jsonl --out lora_3b/all
-"""
+"""Train LoRA with DPO on preference pairs (paper §2.6, Appendix E)."""
 
 from __future__ import annotations
 
@@ -35,7 +28,7 @@ from lora.run_manifest import (
     persist_run_manifest,
     publish_adapter,
 )
-from lora.utils import attach_lora, build_lora_config, load_base_model, load_lora_adapter, smoke_test_backward
+from lora.utils import attach_lora, build_lora_config, load_base_model, load_lora_adapter
 
 
 _CHECKPOINT_FILES = {
@@ -231,7 +224,6 @@ def main() -> None:
         action="store_true",
         help="Use Qwen2.5-3B + paper LoRA r=16 alpha=32 all-linear",
     )
-    parser.add_argument("--smoke-only", action="store_true")
     parser.add_argument(
         "--max-length",
         type=int,
@@ -315,18 +307,8 @@ def main() -> None:
     )
     lora_cfg = build_lora_config(r=lora_r, alpha=lora_alpha, target_modules=target_modules)
 
-    if args.smoke_only:
-        model, tokenizer = load_base_model(model_id=model_id, use_4bit=config.USE_4BIT)
-        model = attach_lora(model, lora_cfg)
-        loss = smoke_test_backward(model, tokenizer)
-        print(
-            f"Smoke OK model={model_id} loss={loss:.4f} "
-            f"beta={args.beta} lora_r={lora_r} lora_alpha={lora_alpha}"
-        )
-        return
-
     if not args.pairs:
-        parser.error("--pairs required unless --smoke-only")
+        parser.error("--pairs is required")
 
     run_dir, adapter_dir, publish_dir = _resolve_run_dirs(
         args, publish_dir=publish_dir, resume=resume_triple

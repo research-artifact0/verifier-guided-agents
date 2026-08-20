@@ -9,6 +9,9 @@ data/
 
 # Unified run outputs (keep placeholder + package only)
 runs/*
+datas/*
+docs/*
+
 !runs/.gitkeep
 !runs/__init__.py
 !runs/paths.py

@@ -3,7 +3,7 @@ SARL paper Tables 1-7 runner (LoRA / DPO / A+b).
 
   python -m eval.run_table --table 1 [--variant base] [--compare-paper]
   python -m eval.run_table --table 5 --train
-  python run_pipeline.py evaluate --table 1
+  python -m eval.run_table --table 1
 """
 
 from __future__ import annotations
@@ -133,11 +133,6 @@ def build_agent(args, variant: str):
     else:
         model = attach_lora(model, lora_cfg)
         tag = f"{variant}-untrained"
-
-    if args.smoke and variant in ("base", "rw"):
-        from lora.utils import smoke_test_backward
-        loss = smoke_test_backward(model, tokenizer)
-        print(f"LoRA smoke (beta={args.dpo_beta}): loss={loss:.4f}")
 
     return LoRALLMAgent(model, tokenizer, max_new_tokens=args.max_tokens), tag
 
@@ -548,7 +543,6 @@ def main() -> None:
     p.add_argument("--merge-alpha", type=float, default=MERGE_ALPHA)
     p.add_argument("--lr", type=float, default=LEARNING_RATE)
     p.add_argument("--epochs", type=int, default=NUM_EPOCHS)
-    p.add_argument("--smoke", action="store_true")
     p.add_argument("--no-4bit", action="store_true", default=not USE_4BIT)
     p.add_argument("--max-tokens", type=int, default=192)
     p.add_argument("--compare-paper", action="store_true")

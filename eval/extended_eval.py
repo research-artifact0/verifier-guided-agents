@@ -226,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
         ns = Namespace(mode="lora", model_id=args.model_id, checkpoint_dir=checkpoint_dir, episodes=args.episodes,
             seed=args.seed, lora_r=config.PAPER_LORA_R, lora_alpha=config.PAPER_LORA_ALPHA,
             lora_target=config.PAPER_LORA_TARGET_MODULES, dpo_beta=config.DPO_BETA, merge_alpha=config.MERGE_ALPHA,
-            lr=config.LEARNING_RATE, epochs=config.NUM_EPOCHS, smoke=False, no_4bit=args.no_4bit,
+            lr=config.LEARNING_RATE, epochs=config.NUM_EPOCHS, no_4bit=args.no_4bit,
             max_tokens=args.max_tokens, logger=logger, resume=False, games_list=None, run_dir=args.out_dir,
             log_file=args.out_dir / "extended_eval.log")
         # Supply exact CSV rewards for interruption-safe continuation.

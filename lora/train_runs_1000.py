@@ -35,8 +35,8 @@ def main() -> int:
         log(f"\n=== TRAIN {name} {datetime.now().isoformat()} ===")
         cmd = [
             py,
-            str(ROOT / "run_pipeline.py"),
-            "train",
+            "-m",
+            "lora.train",
             "--pairs",
             str(pairs),
             "--out",
