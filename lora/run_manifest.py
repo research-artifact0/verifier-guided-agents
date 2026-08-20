@@ -13,7 +13,15 @@ from typing import Any
 
 import yaml
 
-from config import PROJECT_ROOT
+from config import (
+    BNB_4BIT_COMPUTE_DTYPE,
+    BNB_4BIT_QUANT_TYPE,
+    PER_DEVICE_BATCH,
+    PROJECT_ROOT,
+    TRAIN_BF16,
+    TRAIN_FP16,
+    USE_4BIT,
+)
 
 
 def utc_now_iso() -> str:
@@ -54,10 +62,13 @@ def build_config_snapshot(
         "lora_target": lora_target,
         "max_length": max_length,
         "gradient_accumulation_steps": grad_accum,
-        "per_device_train_batch_size": 1,
-        "quantization": "4bit",
-        "fp16": False,
-        "bf16": False,
+        "per_device_train_batch_size": PER_DEVICE_BATCH,
+        "use_4bit": USE_4BIT,
+        "quantization": "4bit" if USE_4BIT else "none",
+        "bnb_4bit_quant_type": BNB_4BIT_QUANT_TYPE if USE_4BIT else None,
+        "bnb_4bit_compute_dtype": BNB_4BIT_COMPUTE_DTYPE if USE_4BIT else None,
+        "fp16": TRAIN_FP16,
+        "bf16": TRAIN_BF16,
         "publish_dir": publish_dir.relative_to(PROJECT_ROOT).as_posix()
         if publish_dir.is_relative_to(PROJECT_ROOT)
         else str(publish_dir),

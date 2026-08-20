@@ -30,6 +30,8 @@ import torch
 
 from config import (
     ALL_GAMES,
+    BNB_4BIT_COMPUTE_DTYPE,
+    BNB_4BIT_QUANT_TYPE,
     DPO_BETA,
     EPISODES_PER_ENV,
     EVAL_GAMES,
@@ -61,6 +63,7 @@ from config import (
     PAPER_LORA_R,
     PAPER_LORA_TARGET_MODULES,
     TRAINING_VARIANTS,
+    USE_4BIT,
     VARIANT_LABELS,
 )
 from eval.metrics import metrics_to_dict
@@ -127,6 +130,10 @@ def _hyperparams(args: argparse.Namespace) -> dict:
         "checkpoint_dir": ckpt,
         "variants_evaluated": args.variants,
         "paper_mode": args.paper,
+        "use_4bit": USE_4BIT,
+        "quantization": "4bit" if USE_4BIT else "none",
+        "bnb_4bit_quant_type": BNB_4BIT_QUANT_TYPE if USE_4BIT else None,
+        "bnb_4bit_compute_dtype": BNB_4BIT_COMPUTE_DTYPE if USE_4BIT else None,
         "run_title": build_run_title(
             {
                 "model_id": model_id,
@@ -496,7 +503,7 @@ def _resolve_eval_args(ns: argparse.Namespace) -> Namespace:
         lr=LEARNING_RATE,
         epochs=NUM_EPOCHS,
         smoke=False,
-        no_4bit=False,
+        no_4bit=not USE_4BIT,
         max_tokens=ns.max_tokens,
         logger=ns.logger,
     )

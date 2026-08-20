@@ -1,11 +1,4 @@
 # SARL: Strategic Agent Learning
-
-### Training and Evaluating Strategic Language Agents with DPO
-
-[📄 Paper](docs/paper_v01.pdf)
-
----
-
 ## 📖 Overview
 
 SARL trains language-model agents to act strategically across cooperative and competitive games. The repository provides the complete pipeline for preparing preference data, training Qwen2.5-3B LoRA adapters with Direct Preference Optimization (DPO), and reproducing Tables 1–7.

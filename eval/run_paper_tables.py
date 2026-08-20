@@ -215,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
             lr=config.LEARNING_RATE,
             epochs=config.NUM_EPOCHS,
             smoke=False,
-            no_4bit=False,
+            no_4bit=not config.USE_4BIT,
             max_tokens=args.max_tokens,
             logger=None,
         )

@@ -25,6 +25,8 @@ from env.agents import HeuristicAgent, LoRALLMAgent, OllamaAgent
 from config import (
     ALL_GAMES,
     ABBREV_TO_GAME,
+    BNB_4BIT_COMPUTE_DTYPE,
+    BNB_4BIT_QUANT_TYPE,
     DPO_BETA,
     EPISODES_PER_ENV,
     GAME_ABBREV,
@@ -52,6 +54,7 @@ from config import (
     TABLE2_VARIANTS,
     TABLE3_VARIANTS,
     TRAINING_VARIANTS,
+    USE_4BIT,
     VARIANT_LABELS,
 )
 from eval.metrics import EvalMetrics, evaluate_agent, metrics_to_dict
@@ -516,6 +519,10 @@ def _hyperparams(args) -> dict:
         "epochs": args.epochs,
         "episodes_per_env": args.episodes,
         "gradient_accumulation": GRADIENT_ACCUMULATION,
+        "use_4bit": not args.no_4bit,
+        "quantization": "4bit" if not args.no_4bit else "none",
+        "bnb_4bit_quant_type": BNB_4BIT_QUANT_TYPE if not args.no_4bit else None,
+        "bnb_4bit_compute_dtype": BNB_4BIT_COMPUTE_DTYPE if not args.no_4bit else None,
     }
     if args.mode == "ollama":
         hp["ollama_model"] = args.ollama_model or OLLAMA_FRONTIER_MODEL
@@ -542,7 +549,7 @@ def main() -> None:
     p.add_argument("--lr", type=float, default=LEARNING_RATE)
     p.add_argument("--epochs", type=int, default=NUM_EPOCHS)
     p.add_argument("--smoke", action="store_true")
-    p.add_argument("--no-4bit", action="store_true")
+    p.add_argument("--no-4bit", action="store_true", default=not USE_4BIT)
     p.add_argument("--max-tokens", type=int, default=192)
     p.add_argument("--compare-paper", action="store_true")
     p.add_argument("--train", action="store_true", help="Table 5: train all DPO variants")
